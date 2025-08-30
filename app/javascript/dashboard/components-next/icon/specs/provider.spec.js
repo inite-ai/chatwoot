@@ -43,6 +43,12 @@ describe('useChannelIcon', () => {
     expect(icon).toBe('i-ri-telegram-fill');
   });
 
+  it('returns correct icon for TelegramAccount channel', () => {
+    const inbox = { channel_type: 'Channel::TelegramAccount' };
+    const { value: icon } = useChannelIcon(inbox);
+    expect(icon).toBe('i-ri-telegram-fill');
+  });
+
   it('returns correct icon for Twitter channel', () => {
     const inbox = { channel_type: 'Channel::TwitterProfile' };
     const { value: icon } = useChannelIcon(inbox);

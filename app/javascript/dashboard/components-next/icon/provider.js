@@ -8,6 +8,7 @@ export function useChannelIcon(inbox) {
     'Channel::Line': 'i-ri-line-fill',
     'Channel::Sms': 'i-ri-chat-1-fill',
     'Channel::Telegram': 'i-ri-telegram-fill',
+    'Channel::TelegramAccount': 'i-ri-telegram-fill',
     'Channel::TwilioSms': 'i-ri-chat-1-fill',
     'Channel::TwitterProfile': 'i-ri-twitter-x-fill',
     'Channel::WebWidget': 'i-ri-global-fill',

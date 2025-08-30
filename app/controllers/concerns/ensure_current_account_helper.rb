@@ -7,7 +7,7 @@ module EnsureCurrentAccountHelper
   end
 
   def ensure_current_account
-    account = Account.find(params[:account_id])
+    account = resolve_account
     render_unauthorized('Account is suspended') and return unless account.active?
 
     if current_user
@@ -16,6 +16,18 @@ module EnsureCurrentAccountHelper
       account_accessible_for_bot?(account)
     end
     account
+  end
+
+  def resolve_account
+    if params[:account_id] == 'current'
+      # For "current" account, find the user's default account or first accessible account
+      return current_user.accounts.first if current_user
+      
+      # If no current_user (e.g., bot access), we can't resolve "current"
+      raise ActiveRecord::RecordNotFound, "Cannot resolve 'current' account without authenticated user"
+    else
+      Account.find(params[:account_id])
+    end
   end
 
   def account_accessible_for_user?(account)

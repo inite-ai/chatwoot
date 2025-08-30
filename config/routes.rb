@@ -240,6 +240,16 @@ Rails.application.routes.draw do
             resource :authorization, only: [:create]
           end
 
+          namespace :channels do
+            resources :telegram_accounts, only: [:create, :show, :update, :destroy] do
+              member do
+                post :send_code
+                post :verify_code
+                post :verify_password
+              end
+            end
+          end
+
           namespace :google do
             resource :authorization, only: [:create]
           end

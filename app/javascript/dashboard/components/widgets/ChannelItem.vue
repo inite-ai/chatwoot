@@ -52,6 +52,7 @@ export default {
         'whatsapp',
         'sms',
         'telegram',
+        'telegram_account',
         'line',
         'instagram',
         'voice',
