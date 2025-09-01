@@ -255,4 +255,4 @@ group :development, :test do
   gem 'spring'
   gem 'spring-watcher-listen'
 end
-gem 'telegram-mtproto-ruby', path: '../telegram-mtproto-ruby'
+gem 'telegram-mtproto-ruby', '~> 0.1.0'
