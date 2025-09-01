@@ -1,6 +1,6 @@
 # pre-build stage
 FROM node:23-alpine as node
-FROM ruby:3.4.4-alpine3.21 AS pre-builder
+FROM ruby:3.4.5-alpine3.21 AS pre-builder
 
 ARG NODE_VERSION="23.7.0"
 ARG PNPM_VERSION="10.2.0"
@@ -20,7 +20,7 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 
 ARG NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
-ENV NODE_OPTIONS ${NODE_OPTIONS}
+ENV NODE_OPTIONS=${NODE_OPTIONS}
 
 ENV BUNDLE_PATH="/gems"
 
@@ -96,7 +96,7 @@ RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && rm .gitignore
 
 # final build stage
-FROM ruby:3.4.4-alpine3.21
+FROM ruby:3.4.5-alpine3.21
 
 ARG NODE_VERSION="23.7.0"
 ARG PNPM_VERSION="10.2.0"
