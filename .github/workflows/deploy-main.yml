@@ -82,6 +82,47 @@ jobs:
         FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
         FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
         FB_APP_ID=${{ secrets.FB_APP_ID }}
+        FACEBOOK_API_VERSION=v21.0
+
+        # Instagram
+        INSTAGRAM_APP_ID=${{ secrets.INSTAGRAM_APP_ID }}
+        INSTAGRAM_APP_SECRET=${{ secrets.INSTAGRAM_APP_SECRET }}
+        INSTAGRAM_VERIFY_TOKEN=${{ secrets.INSTAGRAM_VERIFY_TOKEN }}
+        INSTAGRAM_API_VERSION=v22.0
+
+        # Google OAuth (Gmail)
+        GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+        GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        GOOGLE_OAUTH_REDIRECT_URI=https://${{ env.DOMAIN }}/google/callback
+
+        # Microsoft OAuth (Outlook/Office 365)
+        AZURE_APP_ID=${{ secrets.AZURE_APP_ID }}
+        AZURE_APP_SECRET=${{ secrets.AZURE_APP_SECRET }}
+
+        # WhatsApp
+        WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }}
+        WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}
+        WHATSAPP_CONFIGURATION_ID=${{ secrets.WHATSAPP_CONFIGURATION_ID }}
+        WHATSAPP_API_VERSION=v21.0
+
+        # Telegram
+        TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+        # SMS Channels
+        TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+
+        # Enterprise Configuration
+        IS_ENTERPRISE=true
+        INSTALLATION_PRICING_PLAN=enterprise
+        DEPLOYMENT_ENV=docker
+        
+        # Captain AI Configuration (добавляем обратно)
+        CAPTAIN_OPEN_AI_API_KEY=${{ secrets.CAPTAIN_OPEN_AI_API_KEY }}
+        CAPTAIN_OPEN_AI_MODEL=gpt-4o-mini
+        CAPTAIN_OPEN_AI_ENDPOINT=https://api.openai.com/
+        CAPTAIN_EMBEDDING_MODEL=text-embedding-3-small
+        CAPTAIN_FIRECRAWL_API_KEY=${{ secrets.CAPTAIN_FIRECRAWL_API_KEY }}
 
         # Additional configuration
         RAILS_LOG_TO_STDOUT=true
@@ -141,6 +182,59 @@ jobs:
         # Create production docker-compose with external network
         cat > docker-compose.prod.yml << EOF
         version: '3.8'
+        
+        # Общий template для переменных окружения (YAML anchor)
+        x-chatwoot-environment: &chatwoot-environment
+          RAILS_ENV: production
+          NODE_ENV: production
+          INSTALLATION_ENV: docker
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: chatwoot
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_URL: redis://redis:6379/0
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+          FRONTEND_URL: https://${{ env.DOMAIN }}
+          MAILER_SENDER_EMAIL: chat@inite.ai
+          SMTP_DOMAIN: inite.ai
+          SMTP_ADDRESS: smtp.mailgun.org
+          SMTP_PORT: 2525
+          SMTP_USERNAME: chat@inite.ai
+          SMTP_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          SMTP_AUTHENTICATION: plain
+          SMTP_ENABLE_STARTTLS_AUTO: true
+          FB_VERIFY_TOKEN: ${{ secrets.FB_VERIFY_TOKEN }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FACEBOOK_API_VERSION: v21.0
+          INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
+          INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
+          INSTAGRAM_VERIFY_TOKEN: ${{ secrets.INSTAGRAM_VERIFY_TOKEN }}
+          INSTAGRAM_API_VERSION: v22.0
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REDIRECT_URI: https://${{ env.DOMAIN }}/google/callback
+          AZURE_APP_ID: ${{ secrets.AZURE_APP_ID }}
+          AZURE_APP_SECRET: ${{ secrets.AZURE_APP_SECRET }}
+          WHATSAPP_APP_ID: ${{ secrets.WHATSAPP_APP_ID }}
+          WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
+          WHATSAPP_CONFIGURATION_ID: ${{ secrets.WHATSAPP_CONFIGURATION_ID }}
+          WHATSAPP_API_VERSION: v21.0
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          IS_ENTERPRISE: true
+          INSTALLATION_PRICING_PLAN: enterprise
+          DEPLOYMENT_ENV: docker
+          CAPTAIN_OPEN_AI_API_KEY: ${{ secrets.CAPTAIN_OPEN_AI_API_KEY }}
+          CAPTAIN_OPEN_AI_MODEL: gpt-4o-mini
+          CAPTAIN_OPEN_AI_ENDPOINT: https://api.openai.com/
+          CAPTAIN_EMBEDDING_MODEL: text-embedding-3-small
+          CAPTAIN_FIRECRAWL_API_KEY: ${{ secrets.CAPTAIN_FIRECRAWL_API_KEY }}
+          RAILS_LOG_TO_STDOUT: true
+          USE_INBOX_AVATAR_FOR_BOT: true
 
         services:
           rails:
@@ -156,31 +250,7 @@ jobs:
                 reservations:
                   memory: 1G
             environment:
-              - RAILS_ENV=production
-              - NODE_ENV=production
-              - INSTALLATION_ENV=docker
-              - POSTGRES_HOST=postgres
-              - POSTGRES_PORT=5432
-              - POSTGRES_DATABASE=chatwoot
-              - POSTGRES_USERNAME=postgres
-              - POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
-              - REDIS_URL=redis://redis:6379/0
-              - REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-              - SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}
-              - FRONTEND_URL=https://${{ env.DOMAIN }}
-              - MAILER_SENDER_EMAIL=chat@inite.ai
-              - SMTP_DOMAIN=inite.ai
-              - SMTP_ADDRESS=smtp.mailgun.org
-              - SMTP_PORT=2525
-              - SMTP_USERNAME=chat@inite.ai
-              - SMTP_PASSWORD=${{ secrets.MAIL_PASSWORD }}
-              - SMTP_AUTHENTICATION=plain
-              - SMTP_ENABLE_STARTTLS_AUTO=true
-              - FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
-              - FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
-              - FB_APP_ID=${{ secrets.FB_APP_ID }}
-              - RAILS_LOG_TO_STDOUT=true
-              - USE_INBOX_AVATAR_FOR_BOT=true
+              <<: *chatwoot-environment
             volumes:
               - chatwoot_storage:/app/storage
               - chatwoot_public:/app/public
@@ -220,31 +290,7 @@ jobs:
                 reservations:
                   memory: 256M
             environment:
-              - RAILS_ENV=production
-              - NODE_ENV=production
-              - INSTALLATION_ENV=docker
-              - POSTGRES_HOST=postgres
-              - POSTGRES_PORT=5432
-              - POSTGRES_DATABASE=chatwoot
-              - POSTGRES_USERNAME=postgres
-              - POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
-              - REDIS_URL=redis://redis:6379/0
-              - REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-              - SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}
-              - FRONTEND_URL=https://${{ env.DOMAIN }}
-              - MAILER_SENDER_EMAIL=chat@inite.ai
-              - SMTP_DOMAIN=inite.ai
-              - SMTP_ADDRESS=smtp.mailgun.org
-              - SMTP_PORT=2525
-              - SMTP_USERNAME=chat@inite.ai
-              - SMTP_PASSWORD=${{ secrets.MAIL_PASSWORD }}
-              - SMTP_AUTHENTICATION=plain
-              - SMTP_ENABLE_STARTTLS_AUTO=true
-              - FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
-              - FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
-              - FB_APP_ID=${{ secrets.FB_APP_ID }}
-              - RAILS_LOG_TO_STDOUT=true
-              - USE_INBOX_AVATAR_FOR_BOT=true
+              <<: *chatwoot-environment
             volumes:
               - chatwoot_storage:/app/storage
               - chatwoot_public:/app/public
@@ -360,6 +406,18 @@ jobs:
         # Run seeds if needed
         echo "🌱 Running database seeds..."
         COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
+        
+        # Enable Captain AI feature for all accounts
+        echo "🤖 Enabling Captain AI for all accounts..."
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "
+        Account.find_each do |account|
+          unless account.feature_enabled?('captain_integration')
+            account.enable_features!('captain_integration')
+            puts \"Enabled Captain AI for account: #{account.name} (ID: #{account.id})\"
+          end
+        end
+        puts 'Captain AI enabled for all accounts!'
+        " || true
         
         # Precompile assets in production
         echo "🎨 Precompiling assets..."
