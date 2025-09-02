@@ -149,6 +149,12 @@ jobs:
             restart: unless-stopped
             expose:
               - "3000"
+            deploy:
+              resources:
+                limits:
+                  memory: 1G
+                reservations:
+                  memory: 512M
             environment:
               - RAILS_ENV=production
               - NODE_ENV=production
@@ -207,6 +213,12 @@ jobs:
             image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
             container_name: ${{ env.PROJECT_NAME }}-sidekiq
             restart: unless-stopped
+            deploy:
+              resources:
+                limits:
+                  memory: 512M
+                reservations:
+                  memory: 256M
             environment:
               - RAILS_ENV=production
               - NODE_ENV=production
@@ -329,7 +341,14 @@ jobs:
         # Check database connection and run migrations
         echo "🔄 Running database migrations..."
         COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:create || true
-        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+        
+        # Run migrations with timeout and retry
+        echo "🔄 Running database migrations (with timeout)..."
+        timeout 300 COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate || {
+          echo "⚠️ Migration timeout, trying again..."
+          sleep 10
+          timeout 600 COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+        }
         
         # Run seeds if needed
         echo "🌱 Running database seeds..."
