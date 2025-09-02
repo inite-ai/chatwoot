@@ -192,6 +192,7 @@ jobs:
               - "traefik.http.routers.${{ env.PROJECT_NAME }}.tls=true"
               - "traefik.http.routers.${{ env.PROJECT_NAME }}.tls.certresolver=letsencrypt"
               - "traefik.http.services.${{ env.PROJECT_NAME }}.loadbalancer.server.port=3000"
+              - "traefik.docker.network=traefik-global"
               # Redirect HTTP to HTTPS
               - "traefik.http.routers.${{ env.PROJECT_NAME }}-http.rule=Host(\`${{ env.DOMAIN }}\`)"
               - "traefik.http.routers.${{ env.PROJECT_NAME }}-http.entrypoints=web"
