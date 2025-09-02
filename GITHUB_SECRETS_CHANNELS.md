@@ -123,30 +123,57 @@ CAPTAIN_FIRECRAWL_API_KEY - FireCrawl API ключ для веб-скрейпи�
 
 ### Если Captain AI показывает "Enterprise Paywall"
 
-1. **Проверьте Enterprise режим:**
-   ```bash
-   docker exec chatwoot-rails env | grep -E "(IS_ENTERPRISE|INSTALLATION_PRICING_PLAN)"
-   ```
-   Должно показывать:
-   - `IS_ENTERPRISE=true`
-   - `INSTALLATION_PRICING_PLAN=enterprise`
-
-2. **Проверьте, включена ли функция для аккаунта:**
+1. **Проверьте системную конфигурацию:**
    ```bash
    docker exec chatwoot-rails bundle exec rails runner "
-   Account.find_each do |account|
-     puts \"Account: #{account.name} - Captain AI: #{account.feature_enabled?('captain_integration')}\"
+   puts 'Enterprise mode: ' + ChatwootApp.enterprise?.to_s
+   puts 'IS_ENTERPRISE: ' + ENV['IS_ENTERPRISE'].to_s
+   puts 'Captain API Key: ' + (ENV['CAPTAIN_OPEN_AI_API_KEY'].present? ? 'Present' : 'Missing')
+   puts 'Pricing plan: ' + (GlobalConfig.get('INSTALLATION_PRICING_PLAN') || 'N/A')
+   "
+   ```
+   Должно показывать:
+   - `Enterprise mode: true`
+   - `IS_ENTERPRISE: true` 
+   - `Captain API Key: Present`
+   - `Pricing plan: enterprise`
+
+2. **Проверьте статус функций для аккаунтов:**
+   ```bash
+   docker exec chatwoot-rails bundle exec rails runner "
+   Account.limit(5).each do |account|
+     puts \"#{account.name}: captain_integration=#{account.feature_enabled?('captain_integration')}\"
    end"
    ```
 
-3. **Включите Captain AI вручную (если не включился автоматически):**
+3. **Запустите детальную диагностику и исправление:**
    ```bash
    docker exec chatwoot-rails bundle exec rails runner /app/enable_captain_ai.rb
    ```
 
-4. **Перезапустите контейнеры:**
+4. **Если проблема с onboarding (повторный setup):**
+   ```bash
+   # Проверить статус onboarding
+   docker exec chatwoot-rails bundle exec rails runner "
+   puts 'Onboarding active: ' + Redis::Alfred.get(Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING).to_s
+   "
+   
+   # Если показывает true, отключить onboarding
+   docker exec chatwoot-rails bundle exec rails runner "
+   Redis::Alfred.delete(Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING)
+   puts 'Onboarding disabled'
+   "
+   ```
+
+5. **Перезапустите контейнеры после изменений:**
    ```bash
    docker-compose restart chatwoot-rails chatwoot-sidekiq
+   ```
+
+6. **Проверьте логи при проблемах:**
+   ```bash
+   docker-compose logs chatwoot-rails | grep -i captain
+   docker-compose logs chatwoot-rails | grep -i enterprise
    ```
 
 ## Дополнительные настройки

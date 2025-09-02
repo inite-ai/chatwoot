@@ -403,20 +403,51 @@ jobs:
           COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
         fi
         
-        # Run seeds if needed
-        echo "🌱 Running database seeds..."
-        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
+        # Run seeds only on initial deployment (check if admin user already exists)
+        echo "🌱 Running database seeds (if needed)..."
+        if COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "puts User.where(type: 'SuperAdmin').exists?" | grep -q "false"; then
+          echo "No admin user found, running seeds..."
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
+        else
+          echo "Admin user exists, skipping seeds to avoid onboarding reset"
+        fi
         
         # Enable Captain AI feature for all accounts
         echo "🤖 Enabling Captain AI for all accounts..."
         COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "
+        # Check Enterprise status
+        puts \"Enterprise mode: #{ChatwootApp.enterprise?}\"
+        puts \"Installation pricing plan: #{GlobalConfig.get('INSTALLATION_PRICING_PLAN')}\"
+        puts \"Is Enterprise config: #{ENV['IS_ENTERPRISE']}\"
+        
         Account.find_each do |account|
+          puts \"Processing account: #{account.name} (ID: #{account.id})\"
+          puts \"Current features: #{account.all_features}\"
+          
+          # Enable captain_integration feature
           unless account.feature_enabled?('captain_integration')
             account.enable_features!('captain_integration')
-            puts \"Enabled Captain AI for account: #{account.name} (ID: #{account.id})\"
+            puts \"✅ Enabled captain_integration for: #{account.name}\"
+          else
+            puts \"ℹ️ captain_integration already enabled for: #{account.name}\"
           end
+          
+          # Also try enabling captain feature (alternative name)
+          begin
+            unless account.feature_enabled?('captain')
+              account.enable_features!('captain')
+              puts \"✅ Enabled captain for: #{account.name}\"
+            else
+              puts \"ℹ️ captain already enabled for: #{account.name}\"
+            end
+          rescue => e
+            puts \"⚠️ Could not enable captain feature: #{e.message}\"
+          end
+          
+          puts \"Final features: #{account.all_features}\"
+          puts \"---\"
         end
-        puts 'Captain AI enabled for all accounts!'
+        puts '🎉 Captain AI enablement completed!'
         " || true
         
         # Precompile assets in production
@@ -456,6 +487,20 @@ jobs:
           echo "🔍 Trying internal health check..."
           COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails curl -f http://localhost:3000/api/v1/accounts || true
         fi
+        
+        # Post-deployment Captain AI verification
+        echo "🔍 Verifying Captain AI status..."
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "
+        puts '=== Captain AI Status Check ==='
+        puts \"Enterprise mode: #{ChatwootApp.enterprise?}\"
+        puts \"IS_ENTERPRISE: #{ENV['IS_ENTERPRISE']}\"
+        puts \"Captain API Key: #{ENV['CAPTAIN_OPEN_AI_API_KEY'].present? ? 'Present' : 'Missing'}\"
+        
+        Account.limit(3).each do |account|
+          puts \"Account #{account.name}: captain_integration=#{account.feature_enabled?('captain_integration')}\"
+        end
+        puts '==========================='
+        " || true
 
     - name: Cleanup
       run: |

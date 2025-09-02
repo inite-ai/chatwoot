@@ -20,6 +20,29 @@ unless defined?(Account)
   exit 1
 end
 
+# Диагностическая информация
+puts "\n🔍 System Information:"
+puts "   Rails Environment: #{Rails.env}"
+puts "   Enterprise mode: #{ChatwootApp.enterprise? rescue 'N/A'}"
+puts "   Installation pricing plan: #{GlobalConfig.get('INSTALLATION_PRICING_PLAN') rescue 'N/A'}"
+puts "   IS_ENTERPRISE env: #{ENV['IS_ENTERPRISE']}"
+puts "   Captain AI API Key present: #{ENV['CAPTAIN_OPEN_AI_API_KEY'].present?}"
+
+# Проверяем доступные фичи
+available_features = begin
+  YAML.safe_load(Rails.root.join('config/features.yml').read).map { |f| f['name'] }
+rescue => e
+  puts "   ⚠️ Could not load features.yml: #{e.message}"
+  []
+end
+
+puts "   Available features: #{available_features.join(', ')}"
+
+captain_related_features = available_features.select { |f| f.include?('captain') }
+puts "   Captain-related features: #{captain_related_features.join(', ')}"
+
+puts "\n" + "="*50
+
 # Счетчики
 total_accounts = 0
 enabled_accounts = 0
@@ -29,16 +52,44 @@ already_enabled = 0
 Account.find_each do |account|
   total_accounts += 1
   
-  if account.feature_enabled?('captain_integration')
+  puts "\n📋 Account: #{account.name} (ID: #{account.id})"
+  puts "   Current features: #{account.all_features.select { |k,v| v }.keys.join(', ')}"
+  
+  captain_integration_enabled = account.feature_enabled?('captain_integration')
+  captain_enabled = begin
+    account.feature_enabled?('captain')
+  rescue
+    false
+  end
+  
+  puts "   captain_integration: #{captain_integration_enabled}"
+  puts "   captain: #{captain_enabled}"
+  
+  if captain_integration_enabled && captain_enabled
     already_enabled += 1
-    puts "✅ Account '#{account.name}' (ID: #{account.id}) already has Captain AI enabled"
+    puts "   ✅ Already has Captain AI enabled"
   else
     begin
-      account.enable_features!('captain_integration')
+      # Enable captain_integration
+      unless captain_integration_enabled
+        account.enable_features!('captain_integration')
+        puts "   🟢 Enabled captain_integration"
+      end
+      
+      # Enable captain (if exists)
+      unless captain_enabled
+        begin
+          account.enable_features!('captain')
+          puts "   🟢 Enabled captain"
+        rescue => e
+          puts "   ⚠️ Could not enable captain feature: #{e.message}"
+        end
+      end
+      
       enabled_accounts += 1
-      puts "🟢 Enabled Captain AI for account '#{account.name}' (ID: #{account.id})"
+      puts "   ✅ Captain AI enabled"
     rescue => e
-      puts "❌ Failed to enable Captain AI for account '#{account.name}' (ID: #{account.id}): #{e.message}"
+      puts "   ❌ Failed: #{e.message}"
     end
   end
 end
