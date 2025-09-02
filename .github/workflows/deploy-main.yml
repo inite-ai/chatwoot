@@ -301,6 +301,9 @@ jobs:
         
         echo "🚀 Deploying Chatwoot with Traefik integration..."
         
+        # Set unique project name to avoid conflicts with other Docker Compose projects
+        export COMPOSE_PROJECT_NAME=chatwoot-prod
+        
         # Pull latest images
         docker-compose -f docker-compose.prod.yml pull || true
         
@@ -325,28 +328,28 @@ jobs:
         
         # Check database connection and run migrations
         echo "🔄 Running database migrations..."
-        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:create || true
-        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:create || true
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
         
         # Run seeds if needed
         echo "🌱 Running database seeds..."
-        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
         
         # Precompile assets in production
         echo "🎨 Precompiling assets..."
-        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails assets:precompile || true
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails assets:precompile || true
         
         # Check if services are running
-        if docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+        if COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
           echo "✅ Deployment successful!"
           echo "🌐 Service available at: https://${{ env.DOMAIN }}"
           
           # Show service status
-          docker-compose -f docker-compose.prod.yml ps
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml ps
         else
           echo "❌ Deployment failed!"
           echo "📋 Container logs:"
-          docker-compose -f docker-compose.prod.yml logs --tail=50
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml logs --tail=50
           exit 1
         fi
 
@@ -363,11 +366,11 @@ jobs:
         else
           echo "⚠️  Application might not be fully ready yet"
           echo "📋 Recent logs:"
-          docker-compose -f docker-compose.prod.yml logs --tail=20 rails
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml logs --tail=20 rails
           
           # Try internal health check
           echo "🔍 Trying internal health check..."
-          docker-compose -f docker-compose.prod.yml exec -T rails curl -f http://localhost:3000/api/v1/accounts || true
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails curl -f http://localhost:3000/api/v1/accounts || true
         fi
 
     - name: Cleanup
