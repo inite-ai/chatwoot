@@ -152,9 +152,9 @@ jobs:
             deploy:
               resources:
                 limits:
-                  memory: 1G
+                  memory: 2G
                 reservations:
-                  memory: 512M
+                  memory: 1G
             environment:
               - RAILS_ENV=production
               - NODE_ENV=production
@@ -342,13 +342,20 @@ jobs:
         echo "🔄 Running database migrations..."
         COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:create || true
         
-        # Run migrations with timeout and retry
-        echo "🔄 Running database migrations (with timeout)..."
-        COMPOSE_PROJECT_NAME=chatwoot-prod timeout 300 docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate || {
-          echo "⚠️ Migration timeout, trying again..."
-          sleep 10
-          COMPOSE_PROJECT_NAME=chatwoot-prod timeout 600 docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
-        }
+        # Run migrations in smaller chunks to avoid memory issues
+        echo "🔄 Running database migrations (optimized)..."
+        
+        # First, check if migration is needed
+        if COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:version 2>/dev/null | grep -q "Current version: 0"; then
+          echo "Running initial schema load instead of migrations..."
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:schema:load || {
+            echo "Schema load failed, trying step-by-step migrations..."
+            COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate:up VERSION=20230426130150
+          }
+        else
+          echo "Running incremental migrations..."
+          COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+        fi
         
         # Run seeds if needed
         echo "🌱 Running database seeds..."
