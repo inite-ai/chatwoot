@@ -412,6 +412,18 @@ jobs:
           echo "Admin user exists, skipping seeds to avoid onboarding reset"
         fi
         
+        # Set correct pricing plan for Enterprise
+        echo "💎 Setting Enterprise pricing plan..."
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "
+        config = InstallationConfig.find_or_initialize_by(name: 'INSTALLATION_PRICING_PLAN')
+        old_value = config.value
+        config.value = 'enterprise'
+        config.locked = false
+        config.save!
+        GlobalConfig.clear_cache
+        puts \"Updated INSTALLATION_PRICING_PLAN: #{old_value} → enterprise\"
+        " || true
+        
         # Enable Captain AI feature for all accounts
         echo "🤖 Enabling Captain AI for all accounts..."
         COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner "

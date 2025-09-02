@@ -78,9 +78,11 @@ TWILIO_AUTH_TOKEN - Twilio Auth Token
 
 ### Captain AI (обязательно для работы AI ассистента)
 ```
-CAPTAIN_OPEN_AI_API_KEY - OpenAI API ключ (обязательно)
+CAPTAIN_OPEN_AI_API_KEY - OpenAI API ключ (обязательно для работы Captain AI)
 CAPTAIN_FIRECRAWL_API_KEY - FireCrawl API ключ для веб-скрейпинга (опционально)
 ```
+
+**⚠️ ВАЖНО:** `CAPTAIN_OPEN_AI_API_KEY` является обязательным секретом! Без него Captain AI будет показывать "Enterprise Paywall" даже при правильной настройке Enterprise режима.
 
 **Примечание:** Остальные параметры Captain AI (модель, endpoint, embedding модель) настроены автоматически с разумными значениями по умолчанию в деплое.
 

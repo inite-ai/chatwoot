@@ -28,6 +28,31 @@ puts "   Installation pricing plan: #{GlobalConfig.get('INSTALLATION_PRICING_PLA
 puts "   IS_ENTERPRISE env: #{ENV['IS_ENTERPRISE']}"
 puts "   Captain AI API Key present: #{ENV['CAPTAIN_OPEN_AI_API_KEY'].present?}"
 
+# Check and fix pricing plan if needed
+current_plan = GlobalConfig.get('INSTALLATION_PRICING_PLAN')['INSTALLATION_PRICING_PLAN'] rescue 'N/A'
+if current_plan != 'enterprise'
+  puts "\n💎 Fixing pricing plan..."
+  begin
+    config = InstallationConfig.find_or_initialize_by(name: 'INSTALLATION_PRICING_PLAN')
+    config.value = 'enterprise'
+    config.locked = false
+    config.save!
+    GlobalConfig.clear_cache
+    puts "   ✅ Updated INSTALLATION_PRICING_PLAN: #{current_plan} → enterprise"
+  rescue => e
+    puts "   ❌ Failed to update pricing plan: #{e.message}"
+  end
+else
+  puts "   ✅ Pricing plan is already set to enterprise"
+end
+
+# Check API key
+unless ENV['CAPTAIN_OPEN_AI_API_KEY'].present?
+  puts "\n⚠️  WARNING: CAPTAIN_OPEN_AI_API_KEY is missing!"
+  puts "   Captain AI will not work without OpenAI API key."
+  puts "   Please add CAPTAIN_OPEN_AI_API_KEY to your GitHub Secrets."
+end
+
 # Проверяем доступные фичи
 available_features = begin
   YAML.safe_load(Rails.root.join('config/features.yml').read).map { |f| f['name'] }
