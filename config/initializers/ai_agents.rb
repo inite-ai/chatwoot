@@ -3,6 +3,9 @@
 require 'agents'
 
 Rails.application.config.after_initialize do
+  # Skip initialization if database tables don't exist yet (during migrations)
+  next unless ActiveRecord::Base.connection.table_exists?('installation_configs')
+
   api_key = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
   model = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || OpenAiConstants::DEFAULT_MODEL
   api_endpoint = InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.value || OpenAiConstants::DEFAULT_ENDPOINT
