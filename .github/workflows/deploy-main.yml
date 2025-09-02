@@ -465,8 +465,8 @@ jobs:
         " || true
         
         # Fix OpenAI Organization ID for project-based keys
-        echo "🔧 Fixing OpenAI Organization ID..."
-        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner /app/fix_openai_organization.rb || true
+        echo "🔧 Applying OpenAI Project Keys patch..."
+        COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails runner /app/fix_openai_project_keys.rb || true
         
         # Precompile assets in production
         echo "🎨 Precompiling assets..."

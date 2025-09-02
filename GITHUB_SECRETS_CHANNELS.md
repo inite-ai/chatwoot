@@ -79,13 +79,13 @@ TWILIO_AUTH_TOKEN - Twilio Auth Token
 ### Captain AI (обязательно для работы AI ассистента)
 ```
 CAPTAIN_OPEN_AI_API_KEY - OpenAI API ключ (обязательно для работы Captain AI)
-CAPTAIN_OPEN_AI_ORGANIZATION - OpenAI Organization ID (обязательно для новых project-based ключей)
+CAPTAIN_OPEN_AI_ORGANIZATION - OpenAI Organization ID (только для legacy ключей, НЕ нужен для project-based ключей sk-proj-*)
 CAPTAIN_FIRECRAWL_API_KEY - FireCrawl API ключ для веб-скрейпинга (опционально)
 ```
 
 **⚠️ ВАЖНО:** 
 - `CAPTAIN_OPEN_AI_API_KEY` является обязательным секретом!
-- `CAPTAIN_OPEN_AI_ORGANIZATION` нужен для новых project-based ключей (`sk-proj-...`)
+- `CAPTAIN_OPEN_AI_ORGANIZATION` НЕ нужен для project-based ключей (`sk-proj-...`), только для legacy ключей
 - Без этих секретов Captain AI будет показывать ошибки 401 Unauthorized.
 
 **Примечание:** Остальные параметры Captain AI (модель, endpoint, embedding модель) настроены автоматически с разумными значениями по умолчанию в деплое.
