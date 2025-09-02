@@ -344,10 +344,10 @@ jobs:
         
         # Run migrations with timeout and retry
         echo "🔄 Running database migrations (with timeout)..."
-        timeout 300 COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate || {
+        COMPOSE_PROJECT_NAME=chatwoot-prod timeout 300 docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate || {
           echo "⚠️ Migration timeout, trying again..."
           sleep 10
-          timeout 600 COMPOSE_PROJECT_NAME=chatwoot-prod docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+          COMPOSE_PROJECT_NAME=chatwoot-prod timeout 600 docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
         }
         
         # Run seeds if needed
