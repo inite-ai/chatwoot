@@ -54,6 +54,7 @@ export default {
         'telegram',
         'telegram_account',
         'line',
+        'facebook',
         'instagram',
         'voice',
       ].includes(key);

@@ -56,12 +56,14 @@ export default {
         twitter: '',
         linkedin: '',
         github: '',
+        telegram: '',
       },
       socialProfileKeys: [
         { key: 'facebook', prefixURL: 'https://facebook.com/' },
         { key: 'twitter', prefixURL: 'https://twitter.com/' },
         { key: 'linkedin', prefixURL: 'https://linkedin.com/' },
         { key: 'github', prefixURL: 'https://github.com/' },
+        { key: 'telegram', prefixURL: 'https://t.me/' },
       ],
     };
   },

@@ -11,6 +11,11 @@ export function useCaptain() {
   const { isEnterprise } = useConfig();
 
   const captainEnabled = computed(() => {
+    // For Enterprise, check if captain_integration is enabled for the account
+    if (isEnterprise) {
+      return currentAccount.value?.features?.captain_integration === true;
+    }
+    // For Cloud, use the existing cloud feature check
     return isCloudFeatureEnabled(FEATURE_FLAGS.CAPTAIN);
   });
 

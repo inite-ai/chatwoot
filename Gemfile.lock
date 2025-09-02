@@ -22,11 +22,6 @@ GIT
       devise (>= 4.0.0, < 5.0.0)
       railties (>= 5.0.0, < 8.0.0)
 
-PATH
-  remote: ../telegram-mtproto-ruby
-  specs:
-    telegram-mtproto-ruby (0.1.0)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -893,6 +888,7 @@ GEM
     stackprof (0.2.25)
     statsd-ruby (1.5.0)
     stripe (8.5.0)
+    telegram-mtproto-ruby (0.1.0)
     telephone_number (1.4.20)
     test-prof (1.2.1)
     thor (1.4.0)
@@ -1097,7 +1093,7 @@ DEPENDENCIES
   squasher
   stackprof
   stripe
-  telegram-mtproto-ruby!
+  telegram-mtproto-ruby (~> 0.1.0)
   telephone_number
   test-prof
   tidewave

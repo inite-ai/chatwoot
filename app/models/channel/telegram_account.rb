@@ -2,19 +2,22 @@
 #
 # Table name: channel_telegram_accounts
 #
-#  id             :bigint           not null, primary key
-#  app_id         :string           not null
-#  app_hash       :string           not null
-#  phone_number   :string           not null
-#  session_string :text
-#  account_name   :string
-#  is_active      :boolean          default(FALSE)
-#  created_at     :datetime         not null
-#  updated_at     :datetime         not null
-#  account_id     :integer          not null
+#  id              :bigint           not null, primary key
+#  account_name    :string
+#  app_hash        :string           not null
+#  is_active       :boolean          default(FALSE)
+#  last_update_pts :integer
+#  phone_code_hash :string
+#  phone_number    :string           not null
+#  session_string  :text
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#  account_id      :integer          not null
+#  app_id          :string           not null
 #
 # Indexes
 #
+#  index_channel_telegram_accounts_on_account_id                   (account_id)
 #  index_channel_telegram_accounts_on_phone_number_and_account_id  (phone_number,account_id) UNIQUE
 #
 

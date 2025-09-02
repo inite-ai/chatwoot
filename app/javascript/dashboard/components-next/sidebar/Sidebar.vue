@@ -216,6 +216,7 @@ const menuItems = computed(() => {
       name: 'Captain',
       icon: 'i-woot-captain',
       label: t('SIDEBAR.CAPTAIN'),
+      to: accountScopedRoute('captain_assistants_index'),
       children: [
         {
           name: 'Assistants',

@@ -1,0 +1,381 @@
+name: Deploy Chatwoot Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: chatwoot
+  DOMAIN: chat.inite.ai  # Замените на ваш домен
+  
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup project directory
+      run: |
+        PROJECT_DIR="/opt/projects/${{ env.PROJECT_NAME }}"
+        mkdir -p $PROJECT_DIR
+        cd $PROJECT_DIR
+        
+        # Create backup of current deployment if exists
+        if [ -d "current" ]; then
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          mv current backup-$timestamp
+        fi
+        
+        # Create new deployment directory
+        mkdir -p current
+        cd current
+        
+        # Copy files to project directory
+        cp -r ${{ github.workspace }}/* . 2>/dev/null || true
+        cp -r ${{ github.workspace }}/.[^.]* . 2>/dev/null || true
+
+    - name: Setup environment variables
+      run: |
+        cd /opt/projects/${{ env.PROJECT_NAME }}/current
+        
+        # Create environment file if it doesn't exist
+        if [ ! -f .env ]; then
+          cat > .env << EOF
+        # Rails Environment
+        RAILS_ENV=production
+        NODE_ENV=production
+        INSTALLATION_ENV=docker
+
+        # Database
+        POSTGRES_HOST=postgres
+        POSTGRES_PORT=5432
+        POSTGRES_DATABASE=chatwoot
+        POSTGRES_USERNAME=postgres
+        POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+        # Redis
+        REDIS_URL=redis://redis:6379/0
+        REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+
+        # App Configuration
+        SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}
+        FRONTEND_URL=https://${{ env.DOMAIN }}
+
+        # Storage
+        STORAGE_PROVIDER=local
+        STORAGE_BUCKET_NAME=chatwoot
+
+        # Email Configuration
+        MAILER_SENDER_EMAIL=chat@inite.ai
+        SMTP_DOMAIN=inite.ai
+        SMTP_ADDRESS=smtp.mailgun.org
+        SMTP_PORT=2525
+        SMTP_USERNAME=chat@inite.ai
+        SMTP_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+        SMTP_AUTHENTICATION=plain
+        SMTP_ENABLE_STARTTLS_AUTO=true
+
+        # Facebook
+        FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
+        FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
+        FB_APP_ID=${{ secrets.FB_APP_ID }}
+
+        # Additional configuration
+        RAILS_LOG_TO_STDOUT=true
+        USE_INBOX_AVATAR_FOR_BOT=true
+        EOF
+        fi
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v3
+      continue-on-error: true
+
+    - name: Build and push Docker image (with Buildx)
+      if: steps.buildx.outcome == 'success'
+      uses: docker/build-push-action@v5
+      with:
+        context: /opt/projects/${{ env.PROJECT_NAME }}/current
+        file: /opt/projects/${{ env.PROJECT_NAME }}/current/docker/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+        platforms: linux/amd64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          RAILS_ENV=production
+          NODE_ENV=production
+          NODE_OPTIONS=--max-old-space-size=4096
+
+    - name: Build and push Docker image (fallback)
+      if: steps.buildx.outcome == 'failure'
+      run: |
+        cd /opt/projects/${{ env.PROJECT_NAME }}/current
+        
+        # Fallback to traditional docker build without BuildKit
+        export DOCKER_BUILDKIT=0
+        
+        # Build the image with production settings
+        docker build \
+          --build-arg RAILS_ENV=production \
+          --build-arg NODE_ENV=production \
+          --build-arg NODE_OPTIONS=--max-old-space-size=4096 \
+          -f docker/Dockerfile \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest .
+        
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+
+    - name: Create production docker-compose
+      run: |
+        cd /opt/projects/${{ env.PROJECT_NAME }}/current
+        
+        # Create production docker-compose with external network
+        cat > docker-compose.prod.yml << EOF
+        version: '3.8'
+
+        services:
+          rails:
+            image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+            container_name: ${{ env.PROJECT_NAME }}-rails
+            restart: unless-stopped
+            expose:
+              - "3000"
+            environment:
+              - RAILS_ENV=production
+              - NODE_ENV=production
+              - INSTALLATION_ENV=docker
+              - POSTGRES_HOST=postgres
+              - POSTGRES_PORT=5432
+              - POSTGRES_DATABASE=chatwoot
+              - POSTGRES_USERNAME=postgres
+              - POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+              - REDIS_URL=redis://redis:6379/0
+              - REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+              - SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}
+              - FRONTEND_URL=https://${{ env.DOMAIN }}
+              - MAILER_SENDER_EMAIL=chat@inite.ai
+              - SMTP_DOMAIN=inite.ai
+              - SMTP_ADDRESS=smtp.mailgun.org
+              - SMTP_PORT=2525
+              - SMTP_USERNAME=chat@inite.ai
+              - SMTP_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+              - SMTP_AUTHENTICATION=plain
+              - SMTP_ENABLE_STARTTLS_AUTO=true
+              - FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
+              - FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
+              - FB_APP_ID=${{ secrets.FB_APP_ID }}
+              - RAILS_LOG_TO_STDOUT=true
+              - USE_INBOX_AVATAR_FOR_BOT=true
+            volumes:
+              - chatwoot_storage:/app/storage
+              - chatwoot_public:/app/public
+            depends_on:
+              postgres:
+                condition: service_healthy
+              redis:
+                condition: service_healthy
+            entrypoint: docker/entrypoints/rails.sh
+            command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+            labels:
+              - "traefik.enable=true"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}.rule=Host(\`${{ env.DOMAIN }}\`)"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}.entrypoints=websecure"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}.tls=true"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}.tls.certresolver=letsencrypt"
+              - "traefik.http.services.${{ env.PROJECT_NAME }}.loadbalancer.server.port=3000"
+              # Redirect HTTP to HTTPS
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}-http.rule=Host(\`${{ env.DOMAIN }}\`)"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}-http.entrypoints=web"
+              - "traefik.http.routers.${{ env.PROJECT_NAME }}-http.middlewares=redirect-to-https"
+              - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+              - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+            networks:
+              - chatwoot-network
+              - traefik-global
+
+          sidekiq:
+            image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+            container_name: ${{ env.PROJECT_NAME }}-sidekiq
+            restart: unless-stopped
+            environment:
+              - RAILS_ENV=production
+              - NODE_ENV=production
+              - INSTALLATION_ENV=docker
+              - POSTGRES_HOST=postgres
+              - POSTGRES_PORT=5432
+              - POSTGRES_DATABASE=chatwoot
+              - POSTGRES_USERNAME=postgres
+              - POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
+              - REDIS_URL=redis://redis:6379/0
+              - REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+              - SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}
+              - FRONTEND_URL=https://${{ env.DOMAIN }}
+              - MAILER_SENDER_EMAIL=chat@inite.ai
+              - SMTP_DOMAIN=inite.ai
+              - SMTP_ADDRESS=smtp.mailgun.org
+              - SMTP_PORT=2525
+              - SMTP_USERNAME=chat@inite.ai
+              - SMTP_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+              - SMTP_AUTHENTICATION=plain
+              - SMTP_ENABLE_STARTTLS_AUTO=true
+              - FB_VERIFY_TOKEN=${{ secrets.FB_VERIFY_TOKEN }}
+              - FB_APP_SECRET=${{ secrets.FB_APP_SECRET }}
+              - FB_APP_ID=${{ secrets.FB_APP_ID }}
+              - RAILS_LOG_TO_STDOUT=true
+              - USE_INBOX_AVATAR_FOR_BOT=true
+            volumes:
+              - chatwoot_storage:/app/storage
+              - chatwoot_public:/app/public
+            depends_on:
+              postgres:
+                condition: service_healthy
+              redis:
+                condition: service_healthy
+            command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+            networks:
+              - chatwoot-network
+
+          redis:
+            image: redis:7-alpine
+            container_name: ${{ env.PROJECT_NAME }}-redis
+            restart: unless-stopped
+            command: ["sh", "-c", "redis-server --requirepass \\"${{ secrets.REDIS_PASSWORD }}\\""]
+            volumes:
+              - chatwoot_redis:/data
+            networks:
+              - chatwoot-network
+            healthcheck:
+              test: [ "CMD", "redis-cli", "-a", "${{ secrets.REDIS_PASSWORD }}", "ping" ]
+              interval: 10s
+              timeout: 5s
+              retries: 5
+
+          postgres:
+            image: pgvector/pgvector:pg16
+            container_name: ${{ env.PROJECT_NAME }}-postgres
+            restart: unless-stopped
+            environment:
+              POSTGRES_DB: chatwoot
+              POSTGRES_USER: postgres
+              POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+            volumes:
+              - chatwoot_postgres:/var/lib/postgresql/data
+            networks:
+              - chatwoot-network
+            healthcheck:
+              test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+              interval: 10s
+              timeout: 5s
+              retries: 5
+
+        networks:
+          chatwoot-network:
+            driver: bridge
+          traefik-global:
+            external: true
+
+        volumes:
+          chatwoot_postgres:
+            driver: local
+          chatwoot_redis:
+            driver: local
+          chatwoot_storage:
+            driver: local
+          chatwoot_public:
+            driver: local
+        EOF
+
+    - name: Deploy application
+      run: |
+        cd /opt/projects/${{ env.PROJECT_NAME }}/current
+        
+        echo "🚀 Deploying Chatwoot with Traefik integration..."
+        
+        # Pull latest images
+        docker-compose -f docker-compose.prod.yml pull || true
+        
+        # Stop and remove old containers
+        docker-compose -f docker-compose.prod.yml down --remove-orphans || true
+        
+        # Start new containers
+        docker-compose -f docker-compose.prod.yml up -d
+        
+        # Restart Traefik to pick up new container
+        echo "🔄 Restarting Traefik to pick up new routes..."
+        docker restart traefik-global || true
+        
+        # Force refresh Docker networks
+        echo "🔗 Refreshing Docker networks..."
+        docker network disconnect traefik-global chatwoot-rails 2>/dev/null || true
+        docker network connect traefik-global chatwoot-rails || true
+        
+        # Wait for services to be ready
+        echo "⏳ Waiting for services to start..."
+        sleep 30
+        
+        # Check database connection and run migrations
+        echo "🔄 Running database migrations..."
+        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:create || true
+        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:migrate
+        
+        # Run seeds if needed
+        echo "🌱 Running database seeds..."
+        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails db:seed || true
+        
+        # Precompile assets in production
+        echo "🎨 Precompiling assets..."
+        docker-compose -f docker-compose.prod.yml exec -T rails bundle exec rails assets:precompile || true
+        
+        # Check if services are running
+        if docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+          echo "✅ Deployment successful!"
+          echo "🌐 Service available at: https://${{ env.DOMAIN }}"
+          
+          # Show service status
+          docker-compose -f docker-compose.prod.yml ps
+        else
+          echo "❌ Deployment failed!"
+          echo "📋 Container logs:"
+          docker-compose -f docker-compose.prod.yml logs --tail=50
+          exit 1
+        fi
+
+    - name: Health check
+      run: |
+        cd /opt/projects/${{ env.PROJECT_NAME }}/current
+        
+        # Wait a bit more for full startup
+        sleep 10
+        
+        # Basic health check
+        if curl -f -s -o /dev/null https://${{ env.DOMAIN }}/api/v1/accounts; then
+          echo "✅ Application is responding correctly"
+        else
+          echo "⚠️  Application might not be fully ready yet"
+          echo "📋 Recent logs:"
+          docker-compose -f docker-compose.prod.yml logs --tail=20 rails
+          
+          # Try internal health check
+          echo "🔍 Trying internal health check..."
+          docker-compose -f docker-compose.prod.yml exec -T rails curl -f http://localhost:3000/api/v1/accounts || true
+        fi
+
+    - name: Cleanup
+      run: |
+        # Clean up unused Docker images
+        docker system prune -f
+        
+        # Clean up old project backups (keep last 3 deployments)
+        find /opt/projects/${{ env.PROJECT_NAME }} -name "backup-*" -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+        
+        echo "🧹 Cleanup completed"
+

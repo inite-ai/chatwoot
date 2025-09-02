@@ -9,20 +9,23 @@ class Contacts::ContactableInboxesService
   private
 
   def get_contactable_inbox(inbox)
-    case inbox.channel_type
-    when 'Channel::TwilioSms'
-      twilio_contactable_inbox(inbox)
-    when 'Channel::Whatsapp'
-      whatsapp_contactable_inbox(inbox)
-    when 'Channel::Sms'
-      sms_contactable_inbox(inbox)
-    when 'Channel::Email'
-      email_contactable_inbox(inbox)
-    when 'Channel::Api'
-      api_contactable_inbox(inbox)
-    when 'Channel::WebWidget'
-      website_contactable_inbox(inbox)
-    end
+    method_name = channel_type_to_method_name(inbox.channel_type)
+    return unless method_name
+
+    send(method_name, inbox)
+  end
+
+  def channel_type_to_method_name(channel_type)
+    {
+      'Channel::TwilioSms' => :twilio_contactable_inbox,
+      'Channel::Whatsapp' => :whatsapp_contactable_inbox,
+      'Channel::Sms' => :sms_contactable_inbox,
+      'Channel::Email' => :email_contactable_inbox,
+      'Channel::Api' => :api_contactable_inbox,
+      'Channel::WebWidget' => :website_contactable_inbox,
+      'Channel::Telegram' => :telegram_contactable_inbox,
+      'Channel::TelegramAccount' => :telegram_account_contactable_inbox
+    }[channel_type]
   end
 
   def website_contactable_inbox(inbox)
@@ -69,5 +72,21 @@ class Contacts::ContactableInboxesService
     when 'whatsapp'
       { source_id: "whatsapp:#{@contact.phone_number}", inbox: inbox }
     end
+  end
+
+  def telegram_contactable_inbox(inbox)
+    # Для Telegram Bot можно использовать существующий contact_inbox или создать новый
+    latest_contact_inbox = inbox.contact_inboxes.where(contact: @contact).last
+    source_id = latest_contact_inbox&.source_id || @contact.identifier || SecureRandom.uuid
+
+    { source_id: source_id, inbox: inbox }
+  end
+
+  def telegram_account_contactable_inbox(inbox)
+    # Для TelegramAccount тоже можем использовать contact_inbox или identifier
+    latest_contact_inbox = inbox.contact_inboxes.where(contact: @contact).last
+    source_id = latest_contact_inbox&.source_id || @contact.identifier || SecureRandom.uuid
+
+    { source_id: source_id, inbox: inbox }
   end
 end

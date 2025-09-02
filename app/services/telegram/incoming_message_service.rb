@@ -51,6 +51,15 @@ class Telegram::IncomingMessageService
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
+
+    # Обновляем Telegram данные в социальных профилях для существующих контактов
+    Telegram::ContactUpdateService.new(
+      contact: @contact,
+      telegram_params: {
+        username: telegram_params_username,
+        from_id: telegram_params_from_id
+      }
+    ).perform
   end
 
   def process_message_attachments
@@ -96,7 +105,15 @@ class Telegram::IncomingMessageService
       username: telegram_params_username,
       language_code: telegram_params_language_code,
       social_telegram_user_id: telegram_params_from_id,
-      social_telegram_user_name: telegram_params_username
+      social_telegram_user_name: telegram_params_username,
+      social_profiles: {
+        facebook: '',
+        twitter: '',
+        linkedin: '',
+        github: '',
+        instagram: '',
+        telegram: telegram_params_username || ''
+      }
     }
   end
 

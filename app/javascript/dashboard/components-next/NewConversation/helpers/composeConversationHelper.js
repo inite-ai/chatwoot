@@ -8,8 +8,10 @@ const CHANNEL_PRIORITY = {
   'Channel::Whatsapp': 2,
   'Channel::Sms': 3,
   'Channel::TwilioSms': 4,
-  'Channel::WebWidget': 5,
-  'Channel::Api': 6,
+  'Channel::Telegram': 5,
+  'Channel::TelegramAccount': 6,
+  'Channel::WebWidget': 7,
+  'Channel::Api': 8,
 };
 
 export const generateLabelForContactableInboxesList = ({
@@ -26,6 +28,12 @@ export const generateLabelForContactableInboxesList = ({
     channelType === INBOX_TYPES.WHATSAPP
   ) {
     return `${name} (${phoneNumber})`;
+  }
+  if (
+    channelType === INBOX_TYPES.TELEGRAM ||
+    channelType === INBOX_TYPES.TELEGRAM_ACCOUNT
+  ) {
+    return `${name} (Telegram)`;
   }
   return name;
 };

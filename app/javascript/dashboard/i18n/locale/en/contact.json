@@ -141,6 +141,10 @@
         "GITHUB": {
           "PLACEHOLDER": "Enter the Github username",
           "LABEL": "Github"
+        },
+        "TELEGRAM": {
+          "PLACEHOLDER": "Enter the Telegram username",
+          "LABEL": "Telegram"
         }
       }
     },
@@ -462,6 +466,9 @@
           },
           "TWITTER": {
             "PLACEHOLDER": "Add Twitter"
+          },
+          "TELEGRAM": {
+            "PLACEHOLDER": "Add Telegram"
           }
         }
       },

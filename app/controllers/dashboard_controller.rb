@@ -36,7 +36,9 @@ class DashboardController < ActionController::Base
       'LOGOUT_REDIRECT_LINK',
       'DISABLE_USER_PROFILE_UPDATE',
       'DEPLOYMENT_ENV',
-      'INSTALLATION_PRICING_PLAN'
+      'INSTALLATION_PRICING_PLAN',
+      'IS_ENTERPRISE',
+      'ENTERPRISE_PLAN_NAME'
     ).merge(app_config)
   end
 

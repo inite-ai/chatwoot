@@ -68,7 +68,7 @@ properties:
         type: string
         description: Type of the channel
         enum:
-          ['web_widget', 'api', 'email', 'line', 'telegram', 'whatsapp', 'sms']
+          ['web_widget', 'api', 'email', 'line', 'telegram', 'whatsapp', 'sms', 'facebook', 'instagram']
         example: web_widget
       website_url:
         type: string
