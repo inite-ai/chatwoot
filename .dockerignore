@@ -1,17 +1,37 @@
+# Build dependencies
 .bundle
+node_modules
+vendor/bundle
+
+# Environment and configs
 .env
 .env.*
 docker-compose.*
-docker/Dockerfile
-docker/dockerfiles
+
+# Logs and temporary files
 log
 storage
 public/system
 tmp
-.codeclimate.yml
-public/packs
-node_modules
-vendor/bundle
-.DS_Store
+*.log
 *.swp
 *~
+.DS_Store
+
+# Build outputs
+public/packs
+coverage/
+
+# Git and development
+.git
+.github
+*.md
+.codeclimate.yml
+
+# Test files
+spec/
+test/
+
+# Cache directories
+tmp/cache
+.cache
