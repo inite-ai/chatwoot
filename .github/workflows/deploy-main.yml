@@ -140,6 +140,19 @@ jobs:
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v3
+      with:
+        # Use docker-container driver for better caching and multi-platform support
+        driver: docker-container
+        # Enable advanced buildkit features
+        buildkitd-flags: |
+          --allow-insecure-entitlement security.insecure
+          --allow-insecure-entitlement network.host
+        # Configure cache mount optimization
+        config-inline: |
+          [worker.oci]
+            max-parallelism = 4
+          [worker.containerd]
+            max-parallelism = 4
       continue-on-error: true
 
     - name: Build and push Docker image (with Buildx)
@@ -149,10 +162,13 @@ jobs:
         context: /opt/projects/${{ env.PROJECT_NAME }}/current
         file: /opt/projects/${{ env.PROJECT_NAME }}/current/docker/Dockerfile
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.sha }}
         platforms: linux/amd64
         cache-from: |
           type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache
+          type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
           type=gha
         cache-to: |
           type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache,mode=max
@@ -161,27 +177,42 @@ jobs:
           RAILS_ENV=production
           NODE_ENV=production
           NODE_OPTIONS=--max-old-space-size=4096
+          BUILDKIT_INLINE_CACHE=1
+        # Optimize build performance
+        provenance: false
+        sbom: false
 
     - name: Build and push Docker image (fallback)
       if: steps.buildx.outcome == 'failure'
       run: |
         cd /opt/projects/${{ env.PROJECT_NAME }}/current
         
-        # Try to pull cache image for traditional build
-        docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache || true
+        echo "🔄 Buildx failed, using traditional Docker build with cache optimization..."
         
-        # Build the image with production settings and cache
+        # Enable BuildKit for traditional build
+        export DOCKER_BUILDKIT=1
+        
+        # Try to pull multiple cache sources
+        docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache || true
+        docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest || true
+        
+        # Build with multiple cache sources
         docker build \
           --cache-from ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache \
+          --cache-from ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest \
           --build-arg RAILS_ENV=production \
           --build-arg NODE_ENV=production \
           --build-arg NODE_OPTIONS=--max-old-space-size=4096 \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
           -f docker/Dockerfile \
           -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache .
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.sha }} .
         
+        # Push all tags
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.sha }}
 
     - name: Create production docker-compose
       run: |
