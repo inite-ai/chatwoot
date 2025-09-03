@@ -151,8 +151,12 @@ jobs:
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
         platforms: linux/amd64
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: |
+          type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache
+          type=gha
+        cache-to: |
+          type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache,mode=max
+          type=gha,mode=max
         build-args: |
           RAILS_ENV=production
           NODE_ENV=production
@@ -163,18 +167,21 @@ jobs:
       run: |
         cd /opt/projects/${{ env.PROJECT_NAME }}/current
         
-        # Fallback to traditional docker build without BuildKit
-        export DOCKER_BUILDKIT=0
+        # Try to pull cache image for traditional build
+        docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache || true
         
-        # Build the image with production settings
+        # Build the image with production settings and cache
         docker build \
+          --cache-from ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache \
           --build-arg RAILS_ENV=production \
           --build-arg NODE_ENV=production \
           --build-arg NODE_OPTIONS=--max-old-space-size=4096 \
           -f docker/Dockerfile \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest .
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache .
         
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.PROJECT_NAME }}:cache
 
     - name: Create production docker-compose
       run: |

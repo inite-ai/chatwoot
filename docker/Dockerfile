@@ -56,8 +56,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 
 WORKDIR /app
 
-COPY Gemfile Gemfile.lock ./
-
+# Install system dependencies first (rarely changes)
 # natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
 # https://github.com/googleapis/google-cloud-ruby/issues/13306
 # adding xz as nokogiri was failing to build libxml
@@ -65,15 +64,18 @@ COPY Gemfile Gemfile.lock ./
 RUN apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
 RUN bundle config set --local force_ruby_platform true
 
-# Do not install development or test gems in production
+# Copy and install Ruby dependencies (changes when Gemfile changes)
+COPY Gemfile Gemfile.lock ./
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle config set without 'development test'; bundle install -j 4 -r 3; \
   else bundle install -j 4 -r 3; \
   fi
 
+# Copy and install Node dependencies (changes when package.json changes)
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
 
+# Copy source code LAST (changes most frequently)
 COPY . /app
 
 # creating a log directory so that image wont fail when RAILS_LOG_TO_STDOUT is false
@@ -86,13 +88,15 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   && rm -rf spec node_modules tmp/cache; \
   fi
 
-# Generate .git_sha file with current commit hash
-RUN git rev-parse HEAD > /app/.git_sha
-
-# Remove unnecessary files
+# Remove unnecessary files BEFORE git operations
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
-  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
-  && rm -rf .git \
+  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete
+
+# Generate .git_sha file with current commit hash (do this LAST to not invalidate cache)
+RUN git rev-parse HEAD > /app/.git_sha || echo "unknown" > /app/.git_sha
+
+# Final cleanup
+RUN rm -rf .git \
   && rm .gitignore
 
 # final build stage
