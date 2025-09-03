@@ -17,6 +17,7 @@ services:
 
   rails:
     <<: *base
+    container_name: chatwoot-rails-dev
     build:
       context: .
       dockerfile: ./docker/dockerfiles/rails.Dockerfile
@@ -45,6 +46,7 @@ services:
 
   sidekiq:
     <<: *base
+    container_name: chatwoot-sidekiq-dev
     image: chatwoot-rails:development
     volumes:
       - ./:/app:delegated
@@ -63,6 +65,7 @@ services:
 
   vite:
     <<: *base
+    container_name: chatwoot-vite-dev
     build:
       context: .
       dockerfile: ./docker/dockerfiles/vite.Dockerfile
@@ -84,6 +87,7 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg16
+    container_name: chatwoot-postgres-dev
     restart: always
     ports:
       - '5432:5432'
@@ -96,6 +100,7 @@ services:
 
   redis:
     image: redis:alpine
+    container_name: chatwoot-redis-dev
     restart: always
     command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
     env_file: .env
@@ -106,6 +111,7 @@ services:
 
   mailhog:
     image: mailhog/mailhog
+    container_name: chatwoot-mailhog-dev
     ports:
       - 1025:1025
       - 8025:8025

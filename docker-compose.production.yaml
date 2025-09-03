@@ -9,6 +9,7 @@ services:
 
   rails:
     <<: *base
+    container_name: chatwoot-rails
     depends_on:
       - postgres
       - redis
@@ -24,6 +25,7 @@ services:
 
   sidekiq:
     <<: *base
+    container_name: chatwoot-sidekiq
     depends_on:
       - postgres
       - redis
@@ -36,6 +38,7 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg16
+    container_name: chatwoot-postgres
     restart: always
     ports:
       - '127.0.0.1:5432:5432'
@@ -49,6 +52,7 @@ services:
 
   redis:
     image: redis:alpine
+    container_name: chatwoot-redis
     restart: always
     command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
     env_file: .env

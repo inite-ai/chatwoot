@@ -24,7 +24,7 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
                    'consumed' => non_web_inboxes(@account)
                  },
                  'agents' => {
-                   'allowed' => 2,
+                   'allowed' => ChatwootApp.max_limit,
                    'consumed' => agents(@account)
                  }
                }

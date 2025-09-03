@@ -6,8 +6,8 @@ module Enterprise::Account::PlanUsageAndLimits
 
   def usage_limits
     {
-      agents: agent_limits.to_i,
-      inboxes: get_limits(:inboxes).to_i,
+      agents: ChatwootApp.max_limit.to_i,
+      inboxes: ChatwootApp.max_limit.to_i,
       captain: {
         documents: get_captain_limits(:documents),
         responses: get_captain_limits(:responses)
